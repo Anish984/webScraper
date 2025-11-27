@@ -1,5 +1,7 @@
 const axios = require("axios");
+const https = require('https');
 
+const agent = new https.Agent({ family: 4 }); // Force IPv4
 // List of small business categories
 const VALID_CATEGORIES = {
   cafe: { type: "amenity", value: "cafe" },
