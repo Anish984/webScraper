@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OSM Multi-Category Scraper</title>
+<style>
+body{font-family:sans-serif;max-width:950px;margin:20px auto;padding:0 16px;}
+label{display:block;margin-top:10px;font-weight:500;}
+input, select{width:100%;padding:6px;margin-top:4px;}
+button{margin-top:10px;padding:6px 12px;cursor:pointer;}
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;}
+th,td{border:1px solid #ddd;padding:6px;}
+th{background:#f0f0f0;}
+.category-checkbox{display:inline-block;margin-right:10px;}
+</style>
+</head>
+<body>
+<h1>Small Business Scraper (OSM)</h1>
+
+<label>City / Area:
+  <input id="city" placeholder="e.g. New York, USA" />
+</label>
+
+<label>Select Categories:</label>
+<div id="categories"></div>
+
+<label>Radius (km):
+  <input id="radius" type="number" value="5" />
+</label>
+
+<label>Max results:
+  <input id="maxResults" type="number" value="1000" />
+</label>
+
+<button id="fetchBtn">Fetch JSON</button>
+<button id="csvBtn">Download CSV</button>
+<button onclick="window.location.href='csvVisualiser.html'">Click to upload CSV</button>
+
+<div id="status" style="margin-top:10px;"></div>
+
+<table id="resultsTable" style="display:none;">
+  <thead>
+    <tr><th>#</th><th>Name</th><th>Type</th><th>Address</th><th>Phone</th><th>Website</th><th>Email</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const VALID_CATEGORIES = [
+  "cafe","restaurant","fast_food","bar","pub","bakery",
+  "hairdresser","beauty","bookstore","convenience",
+  "clothes","electronics","florist","jewelry","sports","toy"
+];
+
+const categoriesDiv = document.getElementById("categories");
+VALID_CATEGORIES.forEach(cat => {
+  const lbl = document.createElement("label");
+  lbl.className = "category-checkbox";
+  
+  lbl.innerHTML = `<input type="checkbox" value="${cat}"> ${cat}`; 
+  
+  categoriesDiv.appendChild(lbl);
+});
+
+const cityInput = document.getElementById("city");
+const radiusInput = document.getElementById("radius");
+const maxInput = document.getElementById("maxResults");
+const statusDiv = document.getElementById("status");
+const table = document.getElementById("resultsTable");
+const tbody = table.querySelector("tbody");
+
+async function fetchJson() {
+  const city = cityInput.value.trim();
+  const radius = radiusInput.value || 5;
+  const maxResults = maxInput.value || 1000;
+  const categories = Array.from(document.querySelectorAll("#categories input:checked")).map(i=>i.value);
+  if(!city){ alert("Enter city"); return; }
+  if(!categories.length){ alert("Select at least one category"); return; }
+
+  statusDiv.textContent="Fetching, please wait...";
+  table.style.display="none"; tbody.innerHTML="";
+
+  const params = new URLSearchParams({city, categories:categories.join(","), radiusKm:radius, maxResults, format:"json"});
+  try{
+    const res = await fetch("/api/businesses?"+params.toString());
+    const data = await res.json();
+    if(!res.ok){ statusDiv.textContent="Error: "+(data.error||"Unknown"); return; }
+    statusDiv.textContent=`Found ${data.count} businesses.`;
+    if(data.results.length){
+      table.style.display="";
+      data.results.forEach((b,i)=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${i+1}</td><td>${b.name}</td><td>${b.type}</td><td>${b.address}</td><td>${b.phone}</td><td>${b.website?`<a href="${b.website}" target="_blank">link</a>`:""}</td><td>${b.email}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  }catch(err){ console.error(err); statusDiv.textContent="Request failed";}
+}
+
+function downloadCsv(){
+  const city = cityInput.value.trim();
+  const radius = radiusInput.value || 5;
+  const maxResults = maxInput.value || 1000;
+  const categories = Array.from(document.querySelectorAll("#categories input:checked")).map(i=>i.value);
+  if(!city){ alert("Enter city"); return; }
+  if(!categories.length){ alert("Select at least one category"); return; }
+  const params = new URLSearchParams({city, categories:categories.join(","), radiusKm:radius, maxResults, format:"csv"});
+  window.open("/api/businesses?"+params.toString(), "_blank");
+}
+
+document.getElementById("fetchBtn").addEventListener("click",fetchJson);
+document.getElementById("csvBtn").addEventListener("click",downloadCsv);
+</script>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Small Business Scraper (OSM)</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      margin-bottom: 0;
+    }
+    p {
+      margin-top: 4px;
+      color: #555;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+    input, select {
+      padding: 6px;
+      width: 100%;
+      max-width: 400px;
+      margin-top: 4px;
+    }
+    button {
+      margin-top: 14px;
+      margin-right: 10px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+    }
+    button:hover {
+      background: #e8e8e8;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      vertical-align: top;
+    }
+    th {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Small Business Scraper</h1>
+  <p>Fetch small business data (cafes, salons, etc.) from OpenStreetMap in one click.</p>
+
+  <label>
+    City / Area (with country):
+    <input id="city" placeholder="e.g. New York, USA or Tokyo, Japan" />
+  </label>
+
+  <label>
+    Category type:
+    <select id="categoryType">
+      <option value="amenity">amenity (cafes, restaurants, pubs...)</option>
+      <option value="shop">shop (hairdresser, clothes, bakery...)</option>
+    </select>
+  </label>
+
+  <label>
+    Category value:
+    <input id="categoryValue" placeholder="e.g. cafe, restaurant, hairdresser, bakery" value="cafe" />
+  </label>
+
+  <label>
+    Radius (km):
+    <input id="radiusKm" type="number" value="5" min="1" max="50" />
+  </label>
+
+  <label>
+    Max results (approx):
+    <input id="maxResults" type="number" value="1000" min="10" max="5000" />
+  </label>
+
+  <div>
+    <button id="btnFetch">Fetch JSON</button>
+    <button id="btnCsv">Download CSV</button>
+  </div>
+  <button onclick="window.location.href='csvVisualiser.html'">click to upload</button>
+  <div id="status"></div>
+
+  <table id="resultsTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Address</th>
+        <th>Phone</th>
+        <th>Website</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+
+  </table>
+
+  <script>
+    const cityInput = document.getElementById("city");
+    const typeInput = document.getElementById("categoryType");
+    const valueInput = document.getElementById("categoryValue");
+    const radiusInput = document.getElementById("radiusKm");
+    const maxInput = document.getElementById("maxResults");
+    const statusDiv = document.getElementById("status");
+    const table = document.getElementById("resultsTable");
+    const tbody = table.querySelector("tbody");
+
+    async function fetchJson() {
+      const city = cityInput.value.trim();
+      const categoryType = typeInput.value;
+      const categoryValue = valueInput.value.trim();
+      const radiusKm = radiusInput.value || 5;
+      const maxResults = maxInput.value || 1000;
+
+      if (!city || !categoryValue) {
+        alert("Please enter both city and category value.");
+        return;
+      }
+
+      statusDiv.textContent = "Fetching data, please wait...";
+      table.style.display = "none";
+      tbody.innerHTML = "";
+
+      const params = new URLSearchParams({
+        city,
+        categoryType,
+        categoryValue,
+        radiusKm,
+        maxResults,
+        format: "json",
+      });
+
+      try {
+        const res = await fetch(`/api/businesses?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          statusDiv.textContent = "Error: " + (data.error || "Unknown error");
+          return;
+        }
+
+        statusDiv.textContent = `Got ${data.count} businesses.`;
+        if (data.results && data.results.length) {
+          table.style.display = "";
+          data.results.forEach((biz, idx) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${idx + 1}</td>
+              <td>${biz.name || ""}</td>
+              <td>${biz.type || ""}</td>
+              <td>${biz.address || ""}</td>
+              <td>${biz.phone || ""}</td>
+              <td>${biz.website ? `<a href="${biz.website}" target="_blank">link</a>` : ""}</td>
+              <td>${biz.email || ""}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = "Request failed.";
+      }
+    }
+
+    function downloadCsv() {
+      const city = cityInput.value.trim();
+      const categoryType = typeInput.value;
+      const categoryValue = valueInput.value.trim();
+      const radiusKm = radiusInput.value || 5;
+      const maxResults = maxInput.value || 1000;
+
+      if (!city || !categoryValue) {
+        alert("Please enter both city and category value.");
+        return;
+      }
+
+      statusDiv.textContent = "Requesting CSV download...";
+      const params = new URLSearchParams({
+        city,
+        categoryType,
+        categoryValue,
+        radiusKm,
+        maxResults,
+        format: "csv",
+      });
+
+      window.open(`/api/businesses?${params.toString()}`, "_blank");
+    }
+
+    document.getElementById("btnFetch").addEventListener("click", fetchJson);
+    document.getElementById("btnCsv").addEventListener("click", downloadCsv);
+    
+  </script>
+</body>
+</html> -->
