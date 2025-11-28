@@ -79,7 +79,7 @@ async function scrapeCategoryBBox(bbox, type, value, retries=3){
           "Content-Type": "text/plain",
           "User-Agent": "college-osm-scraper/1.0 (your-email@example.com)"
         },
-        timeout: 60000
+        timeout: 180000
       });
       return res.data.elements || [];
     }catch(err){
